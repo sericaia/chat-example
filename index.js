@@ -1,17 +1,40 @@
-var app = require('express')();
-var http = require('http').Server(app);
-var io = require('socket.io')(http);
+var Hapi = require('hapi');
+var server = new Hapi.Server();
 
-app.get('/', function(req, res){
-  res.sendFile(__dirname + '/index.html');
+server.connection({
+  host: 'localhost',
+  port: 3000
 });
 
-io.on('connection', function(socket){
-  socket.on('chat message', function(msg){
-    io.emit('chat message', msg);
+var io = require('socket.io')(server.listener);
+
+server.register(require('inert'), function(err) {
+  if (err) {
+    throw err;
+  }
+
+  server.route({
+    method: 'GET',
+    path: '/',
+    config: {
+      id: 'hello',
+      handler: function(request, reply) {
+        return reply.file(__dirname + '/index.html');
+      }
+    }
+  });
+
+  server.start(function(err) {
+    if (err) {
+      throw err;
+    }
+
+    console.log('Server running at:', server.info.uri);
   });
 });
 
-http.listen(3000, function(){
-  console.log('listening on *:3000');
+io.on('connection', function(socket) {
+  socket.on('chat message', function(msg) {
+    io.emit('chat message', msg);
+  });
 });
